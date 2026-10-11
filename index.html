@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Macro & Recomposition Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans min-h-screen p-8">
+    <div class="max-w-4xl mx-auto">
+        <header class="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
+            <h1 class="text-3xl font-bold text-emerald-400">Macro & Recomposition Tracker</h1>
+            <span id="status" class="px-3 py-1 text-xs rounded-full bg-yellow-900 text-yellow-300">Connecting to API...</span>
+        </header>
+
+        <!-- Step 1: User Profile & Onboarding Card -->
+        <div class="bg-gray-800 p-6 rounded-xl shadow-lg mb-8 border border-purple-500/40">
+            <h2 class="text-xl font-semibold mb-2 text-purple-400">Step 1: Set Up Your Physique Profile</h2>
+            <p class="text-sm text-gray-400 mb-4">Enter your metrics below to unlock your personalized calorie targets and tracking dashboard.</p>
+            
+            <form id="profileForm" class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Age</label>
+                    <input type="number" id="profile_age" required class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white" placeholder="20">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Weight (kg)</label>
+                    <input type="number" step="0.1" id="profile_weight" required class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white" placeholder="75">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Height (cm)</label>
+                    <input type="number" step="0.1" id="profile_height" required class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white" placeholder="175">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Sex</label>
+                    <select id="profile_sex" class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white">
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Primary Goal</label>
+                    <select id="profile_goal" class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white">
+                        <option value="recomposition">Recomposition</option>
+                        <option value="fat_loss">Fat Loss</option>
+                        <option value="muscle_gain">Muscle Gain</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded transition">
+                        Save Profile
+                    </button>
+                </div>
+            </form>
+            <div id="profileAnalysis" class="bg-gray-900/60 p-4 rounded-lg text-sm text-gray-300 hidden"></div>
+        </div>
+
+        <!-- Step 2: Main Dashboard -->
+        <div id="trackerDashboard" class="space-y-8">
+            
+            <!-- Today's Progress Section -->
+            <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold mb-4 text-emerald-300">Step 2: Today's Progress & Balance</h2>
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-300">Effective Calories (Consumed - Burned) vs Target</span>
+                            <span id="calProgressText" class="text-emerald-400 font-medium">0 / 0 kcal</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-3 relative overflow-hidden">
+                            <div id="calBar" class="bg-emerald-500 h-3 rounded-full transition-all duration-500 absolute top-0 left-0" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-300">Calories Burned (Workout Output)</span>
+                            <span id="burnProgressText" class="text-cyan-400 font-medium">0 kcal</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-3 relative overflow-hidden">
+                            <div id="burnBar" class="bg-cyan-500 h-3 rounded-full transition-all duration-500 absolute top-0 left-0" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-300">Protein Target</span>
+                            <span id="proProgressText" class="text-blue-400 font-medium">0 / 0 g</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-3 relative overflow-hidden">
+                            <div id="proBar" class="bg-blue-500 h-3 rounded-full transition-all duration-500 absolute top-0 left-0" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Custom Food Form -->
+            <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold mb-4 text-emerald-300">Add New Custom Food</h2>
+                <form id="foodForm" class="grid grid-cols-1 md:grid-cols-4 gap-4" autocomplete="off">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Food Name</label>
+                        <input type="text" id="food_item_title" autocomplete="off" required class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white" placeholder="e.g. Oats">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Calories / 100g</label>
+                        <input type="number" step="0.1" id="new_calories" required class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white" placeholder="389">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Protein / 100g</label>
+                        <input type="number" step="0.1" id="new_protein" required class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white" placeholder="16.9">
+                    </div>
+                    <div class="flex items-end">
+                        <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded transition">
+                            Add Food
+                        </button>
+                    </div>
+                </form>
+                <p id="foodMsg" class="mt-3 text-sm text-center text-blue-400"></p>
+            </div>
+
+            <!-- Log a Meal -->
+            <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold mb-4 text-emerald-300">Log a Meal</h2>
+                <form id="mealForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Date (YYYY-MM-DD)</label>
+                        <input type="text" id="log_date" required class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white" placeholder="2026-10-11" value="2026-10-11">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Select Food Item</label>
+                        <select id="food_id" required class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white">
+                            <option value="">Loading foods...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Quantity (grams)</label>
+                        <input type="number" step="0.1" id="qty_grams" required class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white" placeholder="200">
+                    </div>
+                    <div class="md:col-span-3 flex items-end">
+                        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-gray-950 font-semibold py-2 px-4 rounded transition">
+                            Submit Meal Log
+                        </button>
+                    </div>
+                </form>
+                <p id="formMsg" class="mt-3 text-sm text-center text-emerald-400"></p>
+            </div>
+
+            <!-- Log Workout -->
+            <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold mb-4 text-cyan-400">Log Workout & Exercise</h2>
+                <form id="workoutForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Date (YYYY-MM-DD)</label>
+                        <input type="text" id="work_date" required class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white" placeholder="2026-10-11" value="2026-10-11">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Exercise Name</label>
+                        <input type="text" id="exercise_name" required class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white" placeholder="e.g. Bench Press">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Sets</label>
+                        <input type="number" id="sets" required class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white" value="3">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Reps</label>
+                        <input type="number" id="reps" required class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white" value="10">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Weight Lifted (kg)</label>
+                        <input type="number" step="0.1" id="weight_kg" required class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white" placeholder="60">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Est. Calorie Burn (kcal)</label>
+                        <input type="number" step="0.1" id="calories_burned" required class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white" placeholder="150">
+                    </div>
+                    <div class="md:col-span-3 flex items-end">
+                        <button type="submit" class="w-full bg-cyan-500 hover:bg-cyan-600 text-gray-950 font-semibold py-2 px-4 rounded transition">
+                            Log Workout
+                        </button>
+                    </div>
+                </form>
+                <p id="workoutMsg" class="mt-3 text-sm text-center text-cyan-400"></p>
+            </div>
+
+            <!-- Summary Table with Delete Buttons -->
+            <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold mb-4 text-emerald-300">Daily Nutrition & Recomposition History</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-gray-700 text-gray-400 text-sm">
+                                <th class="p-3">Date</th>
+                                <th class="p-3">Workout Burn</th>
+                                <th class="p-3">Food Consumed</th>
+                                <th class="p-3">Net Effective Calories</th>
+                                <th class="p-3">Protein (g)</th>
+                                <th class="p-3 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="macroTableBody">
+                            <tr><td colspan="6" class="p-4 text-center text-gray-500">Loading data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:5001';
+        const userId = 1;
+        let userTargets = { target_net_calories: 2000, target_protein: 150 };
+
+        async function loadProfile() {
+            try {
+                const res = await fetch(`${API_URL}/api/profile/${userId}`);
+                if (!res.ok) throw new Error('API connection failed');
+                const data = await res.json();
+                
+                document.getElementById('status').className = 'px-3 py-1 text-xs rounded-full bg-emerald-900 text-emerald-300';
+                document.getElementById('status').innerText = 'API Connected';
+
+                if (data && data.age) {
+                    document.getElementById('profile_age').value = data.age;
+                    document.getElementById('profile_weight').value = data.current_weight;
+                    document.getElementById('profile_height').value = data.height_cm;
+                    document.getElementById('profile_sex').value = data.sex;
+                    document.getElementById('profile_goal').value = data.goal;
+
+                    userTargets.target_net_calories = data.target_net_calories;
+                    userTargets.target_protein = data.target_protein;
+
+                    const analysisEl = document.getElementById('profileAnalysis');
+                    analysisEl.classList.remove('hidden');
+                    analysisEl.innerHTML = `
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+                            <div><strong>BMI:</strong> ${data.bmi}</div>
+                            <div><strong>Healthy Weight:</strong> ${data.min_healthy_weight}kg - ${data.max_healthy_weight}kg</div>
+                            <div><strong>Status:</strong> <span class="${data.is_healthy ? 'text-emerald-400' : 'text-yellow-400'}">${data.is_healthy ? 'Healthy Range ✓' : 'Outside Range'}</span></div>
+                        </div>
+                        <div class="border-t border-gray-700/60 pt-2 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-purple-300">
+                            <div><strong>BMR:</strong> ${data.bmr} kcal/day</div>
+                            <div><strong>TDEE:</strong> ${data.tdee} kcal/day</div>
+                            <div><strong>Target Net Calorie Intakes:</strong> <span class="text-emerald-300 font-bold">${data.target_net_calories} kcal/day</span></div>
+                        </div>
+                    `;
+
+                    fetchMacros();
+                }
+            } catch (err) {
+                document.getElementById('status').className = 'px-3 py-1 text-xs rounded-full bg-red-900 text-red-300';
+                document.getElementById('status').innerText = 'API Disconnected';
+                console.error(err);
+            }
+        }
+
+        document.getElementById('profileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                age: parseInt(document.getElementById('profile_age').value),
+                current_weight: parseFloat(document.getElementById('profile_weight').value),
+                height_cm: parseFloat(document.getElementById('profile_height').value),
+                sex: document.getElementById('profile_sex').value,
+                goal: document.getElementById('profile_goal').value
+            };
+
+            const res = await fetch(`${API_URL}/api/profile/${userId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) { 
+                await loadProfile(); 
+                alert('Profile updated successfully!');
+            }
+        });
+
+        async function loadFoodDropdown() {
+            try {
+                const res = await fetch(`${API_URL}/api/foods`);
+                const foods = await res.json();
+                const select = document.getElementById('food_id');
+                select.innerHTML = '<option value="">Select a food item...</option>';
+                foods.forEach(food => {
+                    const option = document.createElement('option');
+                    option.value = food.food_id;
+                    option.textContent = `${food.name} (${food.calories} kcal / 100g)`;
+                    select.appendChild(option);
+                });
+            } catch (err) { console.error('Failed to load foods', err); }
+        }
+
+        async function fetchMacros() {
+            try {
+                const response = await fetch(`${API_URL}/api/macros/${userId}`);
+                const data = await response.json();
+                const tbody = document.getElementById('macroTableBody');
+                tbody.innerHTML = '';
+
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-500">No logs found.</td></tr>';
+                } else {
+                    data.forEach(row => {
+                        tbody.innerHTML += `
+                            <tr class="border-b border-gray-700/50 hover:bg-gray-700/30">
+                                <td class="p-3">${row.log_date}</td>
+                                <td class="p-3 text-cyan-300">-${row.exercise_calories_burned.toFixed(0)} kcal</td>
+                                <td class="p-3 text-emerald-400 font-medium">${row.total_calories.toFixed(1)}</td>
+                                <td class="p-3 text-yellow-400 font-medium">${row.net_calories.toFixed(1)}</td>
+                                <td class="p-3 text-blue-400 font-medium">${row.total_protein.toFixed(1)}</td>
+                                <td class="p-3 text-right">
+                                    <button onclick="deleteLog(${row.log_id})" class="px-2 py-1 text-xs bg-red-600/80 hover:bg-red-600 text-white rounded transition">Delete</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+
+                const todayStr = '2026-10-11';
+                const todayLogs = data.filter(row => row.log_date === todayStr);
+                
+                const totalNetCals = todayLogs.reduce((sum, row) => sum + row.net_calories, 0);
+                const totalBurn = todayLogs.reduce((sum, row) => sum + row.exercise_calories_burned, 0);
+                const totalProtein = todayLogs.reduce((sum, row) => sum + row.total_protein, 0);
+                
+                const calPercent = Math.min(100, Math.max(0, (totalNetCals / userTargets.target_net_calories) * 100));
+                // Assuming a reasonable daily target burn of 500 kcal for the progress bar percentage calculation
+                const burnPercent = Math.min(100, Math.max(0, (totalBurn / 500) * 100));
+                const proPercent = Math.min(100, Math.max(0, (totalProtein / userTargets.target_protein) * 100));
+
+                document.getElementById('calProgressText').innerText = `${totalNetCals.toFixed(0)} / ${userTargets.target_net_calories} kcal`;
+                document.getElementById('calBar').style.width = `${calPercent}%`;
+
+                document.getElementById('burnProgressText').innerText = `${totalBurn.toFixed(0)} kcal burned`;
+                document.getElementById('burnBar').style.width = `${burnPercent}%`;
+
+                document.getElementById('proProgressText').innerText = `${totalProtein.toFixed(0)} / ${userTargets.target_protein} g`;
+                document.getElementById('proBar').style.width = `${proPercent}%`;
+            } catch (err) { console.error(err); }
+        }
+
+        async function deleteLog(logId) {
+            if (confirm('Are you sure you want to delete this log?')) {
+                const res = await fetch(`${API_URL}/api/delete_log/${logId}`, { method: 'DELETE' });
+                if (res.ok) { fetchMacros(); }
+            }
+        }
+
+        document.getElementById('foodForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                food_name: document.getElementById('food_item_title').value,
+                calories: parseFloat(document.getElementById('new_calories').value),
+                protein: parseFloat(document.getElementById('new_protein').value)
+            };
+            const res = await fetch(`${API_URL}/api/foods`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (res.ok) {
+                document.getElementById('foodForm').reset();
+                loadFoodDropdown();
+                document.getElementById('foodMsg').innerText = 'Food added successfully!';
+            }
+        });
+
+        document.getElementById('mealForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                user_id: userId,
+                log_date: document.getElementById('log_date').value.trim(),
+                food_id: parseInt(document.getElementById('food_id').value),
+                qty_grams: parseFloat(document.getElementById('qty_grams').value)
+            };
+        const res = await fetch(`${API_URL}/api/log_meal`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (res.ok) {
+                fetchMacros();
+                document.getElementById('formMsg').innerText = 'Meal logged successfully!';
+            }
+        });
+
+        document.getElementById('workoutForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                user_id: userId,
+                log_date: document.getElementById('work_date').value.trim(),
+                exercise_name: document.getElementById('exercise_name').value,
+                sets: parseInt(document.getElementById('sets').value),
+                reps: parseInt(document.getElementById('reps').value),
+                weight_kg: parseFloat(document.getElementById('weight_kg').value),
+                calories_burned: parseFloat(document.getElementById('calories_burned').value)
+            };
+            const res = await fetch(`${API_URL}/api/log_workout`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (res.ok) {
+                fetchMacros();
+                document.getElementById('workoutMsg').innerText = 'Workout logged successfully!';
+            }
+        });
+
+        loadProfile();
+        loadFoodDropdown();
+    </script>
+</body>
+</html>
